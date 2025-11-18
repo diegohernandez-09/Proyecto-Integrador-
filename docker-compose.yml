@@ -1,0 +1,73 @@
+version: '3.8'
+
+# =======================================================
+# SECCIÓN DE SERVICIOS (Aplicación y Monitoreo Estables)
+# =======================================================
+services:
+
+  # 1. Servicio de Base de Datos
+  db:
+    image: mariadb:10.6 
+    container_name: wordpress_db
+    restart: always
+    environment:
+      # ¡IMPORTANTE! Reemplazar estos valores con las credenciales que usaste en la instalación de WP
+      MYSQL_ROOT_PASSWORD: tu_root_password_segura 
+      MYSQL_DATABASE: wordpress_db_name 
+      MYSQL_USER: wordpress_user 
+      MYSQL_PASSWORD: tu_wordpress_password
+    volumes:
+      - db_data:/var/lib/mysql
+
+  # 2. Servicio de WordPress (Aplicación Web)
+  wordpress:
+    depends_on:
+      - db 
+    image: wordpress:latest 
+    container_name: wordpress_app
+    restart: always
+    ports:
+      - "8081:80" # Puerto de acceso a la aplicación
+    environment:
+      # Debe COINCIDIR con los valores del servicio 'db'
+      WORDPRESS_DB_HOST: db:3306 
+      WORDPRESS_DB_NAME: wordpress_db_name
+      WORDPRESS_DB_USER: wordpress_user
+      WORDPRESS_DB_PASSWORD: tu_wordpress_password
+    volumes:
+      - wp-content:/var/www/html/wp-content
+
+  # 3. Servicio Netdata (Monitoreo con Gráficas Sencillas)
+  netdata:
+    image: netdata/netdata
+    container_name: netdata
+    restart: always
+    # Permisos necesarios para monitorear el sistema host
+    cap_add:
+      - SYS_PTRACE 
+    ports:
+      - "19999:19999" # Puerto de acceso a la interfaz web de Netdata
+    volumes:
+      # Acceso a los procesos del host (esencial para el monitoreo)
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - netdata_config:/etc/netdata # Persistencia de la configuración
+
+# =======================================================
+# SECCIÓN DE VOLÚMENES (Persistencia de Datos)
+# =======================================================
+volumes:
+  # Volúmenes de la Aplicación
+  db_data:
+    driver: local 
+  wp-content:
+    driver: local
+  
+  # Volumen de Monitoreo
+  netdata_config:
+    driver: local
+  
+
+
